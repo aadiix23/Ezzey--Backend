@@ -75,7 +75,7 @@ const sendPasswordResetEmail = async (email, resetToken, userName) => {
   try {
     const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
-    const resetUrl = `${clientUrl}/reset-password?token=${resetToken}`;
+    const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
     const { data, error } = await resend.emails.send({
       from: `Ezzey <onboarding@resend.dev>`,
