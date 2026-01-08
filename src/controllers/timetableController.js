@@ -269,6 +269,116 @@ exports.getTimetableByFaculty = async (req, res, next) => {
   }
 };
 
+// @desc    Get all timetables
+// @route   GET /timetable
+// @access  Private
+// @desc    Get all timetables
+// @route   GET /timetable
+// @access  Private
+exports.getAllTimetables = async (req, res, next) => {
+  try {
+    const { status, batchId, limit = 10, page = 1 } = req.query;
+    const matchStage = {};
+
+    if (status) {
+      matchStage.status = status;
+    }
+
+    if (batchId) {
+      // Ensure batchId is an ObjectId if filtering by valid ID, or just string if mixed
+      // Usually req.query is string, but for $match with ObjectId it's safer to cast if needed.
+      // Assuming simple string match works if stored as string, but standard Mongoose uses ObjectId.
+      // Let's use mongoose.Types.ObjectId if valid.
+      const mongoose = require('mongoose');
+      if (mongoose.Types.ObjectId.isValid(batchId)) {
+        matchStage.batch = new mongoose.Types.ObjectId(batchId);
+      }
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const pipeline = [
+      // 1. Filter
+      { $match: matchStage },
+
+      // 2. Sort by newest first (so we keep the latest one in group)
+      { $sort: { createdAt: -1 } },
+
+      // 3. Group by Batch + OptionNumber to deduplicate
+      {
+        $group: {
+          _id: {
+            batch: '$batch',
+            optionNumber: '$optionNumber',
+          },
+          doc: { $first: '$$ROOT' },
+        },
+      },
+
+      // 4. Restore document structure
+      { $replaceRoot: { newRoot: '$doc' } },
+
+      // 5. Sort again to ensure final list is ordered by creation (optional but good for consistency)
+      { $sort: { createdAt: -1 } },
+
+      // 6. Facet for Pagination (Meta count + Data)
+      {
+        $facet: {
+          metadata: [{ $count: 'total' }],
+          data: [
+            { $skip: skip },
+            { $limit: Number(limit) },
+            // Populate Batch
+            {
+              $lookup: {
+                from: 'batches',
+                localField: 'batch',
+                foreignField: '_id',
+                as: 'batch',
+              },
+            },
+            {
+              $unwind: {
+                path: '$batch',
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            // Populate GeneratedBy (User)
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'generatedBy',
+                foreignField: '_id',
+                as: 'generatedBy',
+              },
+            },
+            {
+              $unwind: {
+                path: '$generatedBy',
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    const result = await Timetable.aggregate(pipeline);
+
+    const data = result[0].data;
+    const total = result[0].metadata[0] ? result[0].metadata[0].total : 0;
+
+    res.status(200).json({
+      success: true,
+      count: data.length,
+      total,
+      data: data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get suggestions
 // @route   POST /timetable/suggestions
 // @access  Private

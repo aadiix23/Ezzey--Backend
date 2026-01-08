@@ -8,6 +8,7 @@ const {
   generateSuggestionsForTimetable,
   deleteTimetable,
   getVisualTimetable,
+  getAllTimetables,
 } = require('../controllers/timetableController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -22,6 +23,7 @@ router.post(
   authorize('admin', 'coordinator'),
   generateSuggestionsForTimetable
 );
+router.get('/', protect, getAllTimetables);
 router.get('/:id', protect, getTimetableById);
 router.get('/batch/:batchId', protect, getTimetableByBatch);
 router.get('/faculty/:facultyId', protect, getTimetableByFaculty);

@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.post('/register', register);
 router.post('/login', login);
-router.post('/logout', protect, logout);
+router.post('/logout', logout);
 router.get('/profile', protect, getProfile);
 router.get('/verify-email', verifyEmail);
 router.post('/resend-verification-email', resendVerificationEmail);

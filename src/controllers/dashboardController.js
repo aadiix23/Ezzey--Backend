@@ -123,26 +123,26 @@ exports.getDashboardSummary = async (req, res, next) => {
     const avgFacultyUtilization =
       facultyUtilizationDetails.length > 0
         ? Number(
-            (
-              facultyUtilizationDetails.reduce(
-                (sum, f) => sum + f.utilization,
-                0
-              ) / facultyUtilizationDetails.length
-            ).toFixed(2)
-          )
+          (
+            facultyUtilizationDetails.reduce(
+              (sum, f) => sum + f.utilization,
+              0
+            ) / facultyUtilizationDetails.length
+          ).toFixed(2)
+        )
         : 0;
 
     // AVG classroom utilization
     const avgClassroomUtilization =
       classroomUtilizationDetails.length > 0
         ? Number(
-            (
-              classroomUtilizationDetails.reduce(
-                (sum, r) => sum + r.utilization,
-                0
-              ) / classroomUtilizationDetails.length
-            ).toFixed(2)
-          )
+          (
+            classroomUtilizationDetails.reduce(
+              (sum, r) => sum + r.utilization,
+              0
+            ) / classroomUtilizationDetails.length
+          ).toFixed(2)
+        )
         : 0;
 
     // Blank periods = occupancy %
@@ -163,6 +163,10 @@ exports.getDashboardSummary = async (req, res, next) => {
           facultyUtilization: avgFacultyUtilization,
           classroomUtilization: avgClassroomUtilization,
           blankPeriods: blankPeriods,
+        },
+        user: {
+          fullName: req.user.name,
+          email: req.user.email,
         },
       },
     });

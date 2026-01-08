@@ -2,12 +2,50 @@ const Faculty = require('../models/Faculty');
 const Subject = require('../models/Subject');
 const XLSX = require('xlsx');
 
+// Helper to resolve subject codes/IDs to ObjectIDs
+async function resolveSubjects(subjectsInput) {
+  if (!subjectsInput || !Array.isArray(subjectsInput)) return undefined;
+
+  const resolvedIds = [];
+  const codesToFind = [];
+
+  const mongoose = require('mongoose');
+
+  subjectsInput.forEach((item) => {
+    if (mongoose.Types.ObjectId.isValid(item)) {
+      resolvedIds.push(item);
+    } else {
+      // Assume it's a subject code (string)
+      codesToFind.push(String(item).trim().toUpperCase());
+    }
+  });
+
+  if (codesToFind.length > 0) {
+    const foundSubjects = await Subject.find({ code: { $in: codesToFind } });
+    foundSubjects.forEach((s) => resolvedIds.push(s._id));
+  }
+
+  return resolvedIds;
+}
+
 // @desc    Create a faculty
 // @route   POST /faculties
 // @access  Private/Admin
 exports.createFaculty = async (req, res, next) => {
   try {
-    const faculty = await Faculty.create(req.body);
+    const { subjects, ...otherData } = req.body;
+
+    // Resolve subjects if provided
+    let subjectIds = subjects;
+    if (subjects) {
+      subjectIds = await resolveSubjects(subjects);
+    }
+
+    const faculty = await Faculty.create({
+      ...otherData,
+      subjects: subjectIds
+    });
+
     await faculty.populate('subjects');
 
     res.status(201).json({
@@ -20,7 +58,7 @@ exports.createFaculty = async (req, res, next) => {
   }
 };
 
-// ... existing getFaculties, updateFaculty, deleteFaculty ...
+// ... existing getFaculties ... (NOT REPLACING THIS PART, BUT SHOWING CONTEXT)
 
 // @desc    Bulk upload faculties with subjects from CSV/Excel
 // @route   POST /faculties/bulk-upload
@@ -57,6 +95,8 @@ exports.bulkUploadFaculties = async (req, res, next) => {
         // 1. Process subjects (comma separated codes)
         const subjectIds = [];
         if (row.subjects) {
+          // Check if it's already an array (unlikely from CSV but possible via other means?)
+          // Usually CSV gives string "CODE1, CODE2"
           const codes = String(row.subjects).split(',').map(c => c.trim().toUpperCase());
           const foundSubjects = await Subject.find({ code: { $in: codes } });
           foundSubjects.forEach(s => subjectIds.push(s._id));
@@ -116,7 +156,15 @@ exports.getFaculties = async (req, res, next) => {
 // @access  Private/Admin
 exports.updateFaculty = async (req, res, next) => {
   try {
-    const faculty = await Faculty.findByIdAndUpdate(req.params.id, req.body, {
+    const { subjects, ...otherData } = req.body;
+
+    // Resolve subjects if provided
+    let updateData = { ...otherData };
+    if (subjects) {
+      updateData.subjects = await resolveSubjects(subjects);
+    }
+
+    const faculty = await Faculty.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true,
     }).populate('subjects');
