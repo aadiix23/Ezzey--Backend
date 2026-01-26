@@ -14,7 +14,7 @@ async function calculateFacultyUtilization() {
   const facultyHoursMap = {};
 
   timetables.forEach((tt) => {
-    tt.slots?.forEach((slot) => {
+    tt.weekSlots?.forEach((slot) => {
       if (slot.faculty) {
         facultyHoursMap[slot.faculty] =
           (facultyHoursMap[slot.faculty] || 0) + 1;
@@ -46,7 +46,7 @@ async function calculateClassroomUtilization() {
   const roomMap = {};
 
   timetables.forEach((tt) => {
-    tt.slots?.forEach((slot) => {
+    tt.weekSlots?.forEach((slot) => {
       if (slot.classroom) {
         roomMap[slot.classroom] =
           (roomMap[slot.classroom] || 0) + 1;
@@ -80,17 +80,19 @@ async function calculateBlankPeriods() {
 
   let used = 0;
   timetables.forEach((tt) => {
-    tt.slots?.forEach((slot) => {
+    tt.weekSlots?.forEach((slot) => {
       if (slot.classroom) used++;
     });
   });
 
   const occupancy =
     totalPossible > 0
-      ? Number(((used / totalPossible) * 100).toFixed(2))
+      ? (used / totalPossible) * 100
       : 0;
 
-  return { occupancy };
+  const vacancy = totalPossible > 0 ? (100 - occupancy) : 0;
+
+  return { vacancy: Number(vacancy.toFixed(2)) };
 }
 
 /* -------------------------------------------------------------
@@ -145,8 +147,8 @@ exports.getDashboardSummary = async (req, res, next) => {
         )
         : 0;
 
-    // Blank periods = occupancy %
-    const blankPeriods = blankPeriodsDetails.occupancy || 0;
+    // Blank periods = vacancy %
+    const blankPeriods = blankPeriodsDetails.vacancy || 0;
 
     res.status(200).json({
       success: true,
