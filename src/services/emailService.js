@@ -1,7 +1,6 @@
 const { Resend } = require('resend');
 const crypto = require('crypto');
 
-// Initialize Resend
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 if (resend && process.env.RESEND_API_KEY) {

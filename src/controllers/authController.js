@@ -4,15 +4,11 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { generateVerificationToken, sendVerificationEmail, sendPasswordResetEmail } = require('../services/emailService');
 
-
-
-
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: '7d',
   });
 };
-
 
 exports.register = async (req, res, next) => {
   try {
@@ -25,8 +21,6 @@ exports.register = async (req, res, next) => {
         message: 'User already exists',
       });
     }
-
-
     const verificationToken = generateVerificationToken();
     const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
@@ -40,18 +34,15 @@ exports.register = async (req, res, next) => {
       isEmailVerified: false,
     });
 
-
     try {
       await sendVerificationEmail(email, verificationToken, name);
     } catch (emailError) {
-
       await User.findByIdAndDelete(user._id);
       return res.status(500).json({
         success: false,
         message: 'Failed to send verification email. Please try again.',
       });
     }
-
 
     const classroomExists = await Classroom.findOne();
 
@@ -92,8 +83,6 @@ exports.login = async (req, res, next) => {
         message: 'Invalid credentials',
       });
     }
-
-
     if (!user.isEmailVerified) {
       return res.status(403).json({
         success: false,
@@ -111,7 +100,6 @@ exports.login = async (req, res, next) => {
 
     const token = generateToken(user._id);
 
-
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -121,7 +109,6 @@ exports.login = async (req, res, next) => {
     });
 
     console.log('✅ User logged in and cookie set:', user.email);
-
 
     const classroomExists = await Classroom.findOne();
 
@@ -141,11 +128,9 @@ exports.login = async (req, res, next) => {
   }
 };
 
-
 exports.getProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
-
 
     const classroomExists = await Classroom.findOne();
 
@@ -164,7 +149,6 @@ exports.getProfile = async (req, res, next) => {
     next(error);
   }
 };
-
 
 exports.logout = async (req, res, next) => {
   try {

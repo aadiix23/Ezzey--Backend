@@ -2,7 +2,6 @@ const Faculty = require('../models/Faculty');
 const Subject = require('../models/Subject');
 const XLSX = require('xlsx');
 
-// Helper to resolve subject codes/IDs to ObjectIDs
 async function resolveSubjects(subjectsInput) {
   if (!subjectsInput || !Array.isArray(subjectsInput)) return undefined;
 
@@ -15,7 +14,6 @@ async function resolveSubjects(subjectsInput) {
     if (mongoose.Types.ObjectId.isValid(item)) {
       resolvedIds.push(item);
     } else {
-     
       codesToFind.push(String(item).trim().toUpperCase());
     }
   });
@@ -32,7 +30,6 @@ exports.createFaculty = async (req, res, next) => {
   try {
     const { subjects, ...otherData } = req.body;
 
-   
     let subjectIds = subjects;
     if (subjects) {
       subjectIds = await resolveSubjects(subjects);
@@ -54,8 +51,6 @@ exports.createFaculty = async (req, res, next) => {
     next(error);
   }
 };
-
-// ... existing getFaculties ... (NOT REPLACING THIS PART, BUT SHOWING CONTEXT)
 
 exports.bulkUploadFaculties = async (req, res, next) => {
   try {

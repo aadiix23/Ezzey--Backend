@@ -10,7 +10,6 @@ const solver = require('javascript-lp-solver');
 const Classroom = require('../models/Classroom');
 const Timetable = require('../models/Timetable');
 
-// Standard Time Slots
 const timeSlots = [
   { id: '09:00', start: '09:00', end: '10:00', label: 'morning' },
   { id: '10:00', start: '10:00', end: '11:00', label: 'morning' },

@@ -13,7 +13,6 @@ const router = express.Router();
 
 router.get('/', protect, getBatches);
 router.post('/', protect, authorize('admin', 'coordinator'), createBatch);
-// SEED ROUTE (Dev Only)
 router.get('/seed-full', seedFullBatch);
 
 router.patch('/:id', protect, authorize('admin', 'coordinator'), updateBatch);

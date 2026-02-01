@@ -12,7 +12,6 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// Configure multer for file uploads
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
@@ -27,9 +26,6 @@ const upload = multer({
   },
 });
 
-// Public routes (if any)
-
-// Protected routes
 router.get('/', protect, getClassrooms);
 router.post('/', protect, authorize('admin', 'coordinator'), createClassroom);
 router.post('/bulk-upload', protect, authorize('admin', 'coordinator'), upload.single('file'), bulkUploadClassrooms);

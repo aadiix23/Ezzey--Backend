@@ -8,7 +8,6 @@ const { initializePopulation, tournamentSelection, applyElitism } = require('./p
 const { crossover, mutate } = require('./operators');
 const Classroom = require('../../models/Classroom');
 
-// Configuration
 const GA_CONFIG = {
     populationSize: 50,
     generations: 100,

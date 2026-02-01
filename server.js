@@ -5,7 +5,6 @@ const PORT = process.env.PORT || 5000;
 
 let server;
 
-// Connect to MongoDB and Start Server
 connectDB()
   .then(() => {
     server = app.listen(PORT, () => {
@@ -21,7 +20,6 @@ connectDB()
     process.exit(1);
   });
 
-// Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
   console.error(`Error: ${err.message}`);
   if (server) {
@@ -31,7 +29,6 @@ process.on('unhandledRejection', (err) => {
   }
 });
 
-// Handle SIGTERM
 process.on('SIGTERM', () => {
   console.log('SIGTERM signal received: closing HTTP server');
   if (server) {

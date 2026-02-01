@@ -10,7 +10,6 @@ const {
 } = require('../controllers/subjectController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
-// Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, path.join(__dirname, '../../uploads'));

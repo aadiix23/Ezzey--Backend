@@ -1,8 +1,3 @@
-/**
- * Constraint Validators for Timetable Generation
- * Implements all hard and soft constraints for genetic algorithm
- */
-
 const timeSlots = [
     { id: '09:00', start: '09:00', end: '10:00' },
     { id: '10:00', start: '10:00', end: '11:00' },
@@ -15,17 +10,11 @@ const timeSlots = [
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-/**
- * Helper: Get time in minutes for comparison
- */
 function getMinutes(time) {
     const [h, m] = time.split(':').map(Number);
     return h * 60 + m;
 }
 
-/**
- * Helper: Check if two time ranges overlap
- */
 function timeRangesOverlap(start1, end1, start2, end2) {
     const s1 = getMinutes(start1);
     const e1 = getMinutes(end1);
@@ -35,9 +24,6 @@ function timeRangesOverlap(start1, end1, start2, end2) {
     return s1 < e2 && s2 < e1;
 }
 
-/**
- * Helper: Get end time from start time and duration
- */
 function getEndTime(startTime, duration) {
     const startMinutes = getMinutes(startTime);
     const endMinutes = startMinutes + (duration * 60);
@@ -45,15 +31,6 @@ function getEndTime(startTime, duration) {
     const minutes = endMinutes % 60;
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
-
-// ============================================================================
-// HARD CONSTRAINTS (Must be satisfied)
-// ============================================================================
-
-/**
- * HC1: No Faculty Overlap
- * A faculty member cannot teach two classes at the same time
- */
 function countFacultyOverlaps(chromosome) {
     let violations = 0;
     const facultySchedule = {};
@@ -78,11 +55,6 @@ function countFacultyOverlaps(chromosome) {
 
     return violations;
 }
-
-/**
- * HC2: No Room Overlap
- * A room cannot host two classes at the same time
- */
 function countRoomOverlaps(chromosome) {
     let violations = 0;
     const roomSchedule = {};
