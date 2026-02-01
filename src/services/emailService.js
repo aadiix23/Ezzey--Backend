@@ -4,19 +4,16 @@ const crypto = require('crypto');
 // Initialize Resend
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
-// Check if Resend is properly initialized
 if (resend && process.env.RESEND_API_KEY) {
   console.log('✅ Email service (Resend) ready');
 } else {
   console.log('❌ Email service error: RESEND_API_KEY not found in environment variables');
 }
 
-// Generate verification token
 const generateVerificationToken = () => {
   return crypto.randomBytes(32).toString('hex');
 };
 
-// Send verification email
 const sendVerificationEmail = async (email, verificationToken, userName) => {
   try {
     const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
@@ -70,7 +67,6 @@ const sendVerificationEmail = async (email, verificationToken, userName) => {
   }
 };
 
-// Send password reset email
 const sendPasswordResetEmail = async (email, resetToken, userName) => {
   try {
     const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';

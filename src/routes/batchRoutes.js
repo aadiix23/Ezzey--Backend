@@ -4,7 +4,8 @@ const {
   getBatches,
   updateBatch,
   deleteBatch,
-  seedFullBatch
+  seedFullBatch,
+  addSubjectsToBatch,
 } = require('../controllers/batchController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -16,6 +17,7 @@ router.post('/', protect, authorize('admin', 'coordinator'), createBatch);
 router.get('/seed-full', seedFullBatch);
 
 router.patch('/:id', protect, authorize('admin', 'coordinator'), updateBatch);
+router.post('/:id/subjects', protect, authorize('admin', 'coordinator'), addSubjectsToBatch);
 router.delete('/:id', protect, authorize('admin', 'coordinator'), deleteBatch);
 
 module.exports = router;

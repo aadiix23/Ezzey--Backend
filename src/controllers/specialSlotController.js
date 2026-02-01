@@ -1,8 +1,5 @@
 const SpecialSlot = require('../models/SpecialSlot');
 
-// @desc    Create a special slot
-// @route   POST /special-slots
-// @access  Private/Admin
 exports.createSpecialSlot = async (req, res, next) => {
   try {
     const slot = await SpecialSlot.create(req.body);
@@ -16,9 +13,6 @@ exports.createSpecialSlot = async (req, res, next) => {
   }
 };
 
-// @desc    Get all special slots
-// @route   GET /special-slots
-// @access  Private
 exports.getSpecialSlots = async (req, res, next) => {
   try {
     const slots = await SpecialSlot.find().sort({ day: 1, startTime: 1 });
@@ -32,9 +26,6 @@ exports.getSpecialSlots = async (req, res, next) => {
   }
 };
 
-// @desc    Delete special slot
-// @route   DELETE /special-slots/:id
-// @access  Private/Admin
 exports.deleteSpecialSlot = async (req, res, next) => {
   try {
     const slot = await SpecialSlot.findByIdAndDelete(req.params.id);

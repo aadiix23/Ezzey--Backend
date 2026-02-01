@@ -4,11 +4,31 @@ const path = require('path');
 const xlsx = require('xlsx');
 const csv = require('csv-parser');
 
-// @desc    Create a subject
-// @route   POST /subjects
-// @access  Private/Admin
 exports.createSubject = async (req, res, next) => {
   try {
+    const { course, semester, section } = req.body;
+
+    if (!course || String(course).trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Course is required',
+      });
+    }
+
+    if (semester === undefined || semester === null || String(semester).trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Semester is required',
+      });
+    }
+
+    if (!section || String(section).trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Section is required',
+      });
+    }
+
     const subject = await Subject.create(req.body);
     res.status(201).json({
       success: true,
@@ -20,9 +40,6 @@ exports.createSubject = async (req, res, next) => {
   }
 };
 
-// @desc    Get all subjects
-// @route   GET /subjects
-// @access  Private
 exports.getSubjects = async (req, res, next) => {
   try {
     const subjects = await Subject.find({ isActive: true });
@@ -36,9 +53,6 @@ exports.getSubjects = async (req, res, next) => {
   }
 };
 
-// @desc    Update subject
-// @route   PATCH /subjects/:id
-// @access  Private/Admin
 exports.updateSubject = async (req, res, next) => {
   try {
     const subject = await Subject.findByIdAndUpdate(req.params.id, req.body, {
@@ -63,9 +77,6 @@ exports.updateSubject = async (req, res, next) => {
   }
 };
 
-// @desc    Delete subject
-// @route   DELETE /subjects/:id
-// @access  Private/Admin
 exports.deleteSubject = async (req, res, next) => {
   try {
     const subject = await Subject.findByIdAndUpdate(
@@ -90,14 +101,10 @@ exports.deleteSubject = async (req, res, next) => {
   }
 };
 
-// @desc    Bulk upload subjects from Excel or CSV file
-// @route   POST /subjects/upload
-// @access  Private/Admin
 exports.uploadSubjects = async (req, res, next) => {
   let uploadedFilePath = null;
 
   try {
-    // Validate file existence
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -108,7 +115,6 @@ exports.uploadSubjects = async (req, res, next) => {
     uploadedFilePath = req.file.path;
     const fileExtension = path.extname(req.file.originalname).toLowerCase();
 
-    // Validate file format
     if (!['.xlsx', '.csv'].includes(fileExtension)) {
       return res.status(400).json({
         success: false,
@@ -118,14 +124,12 @@ exports.uploadSubjects = async (req, res, next) => {
 
     let rows = [];
 
-    // Parse file based on extension
     if (fileExtension === '.xlsx') {
       rows = await parseExcelFile(uploadedFilePath);
     } else if (fileExtension === '.csv') {
       rows = await parseCSVFile(uploadedFilePath);
     }
 
-    // Validate that rows were parsed successfully
     if (!rows || rows.length === 0) {
       return res.status(400).json({
         success: false,
@@ -133,26 +137,20 @@ exports.uploadSubjects = async (req, res, next) => {
       });
     }
 
-    // Transform and validate rows
+   
     const subjectsToInsert = [];
-    const existingCodes = new Set();
     let skipped = 0;
 
-    // Get all existing subject codes from DB to check for duplicates
-    const existingSubjects = await Subject.find(
-      {},
-      { code: 1 }
-    );
-    existingSubjects.forEach((s) => existingCodes.add(s.code.toUpperCase()));
-
     for (const row of rows) {
-      // Trim all string values and validate required fields
+     
       const sanitizedRow = sanitizeRow(row);
 
-      // Validate required fields
       if (
         !sanitizedRow.code ||
         !sanitizedRow.name ||
+        !sanitizedRow.course ||
+        sanitizedRow.semester === null ||
+        !sanitizedRow.section ||
         !sanitizedRow.department ||
         sanitizedRow.hoursPerWeek === null
       ) {
@@ -160,35 +158,27 @@ exports.uploadSubjects = async (req, res, next) => {
         continue;
       }
 
-      // Check if code already exists in DB
-      if (existingCodes.has(sanitizedRow.code.toUpperCase())) {
-        skipped++;
-        continue;
-      }
-
-      // Add to insert list
       subjectsToInsert.push({
         code: sanitizedRow.code.toUpperCase(),
         name: sanitizedRow.name,
+        course: sanitizedRow.course,
+        semester: sanitizedRow.semester,
+        section: sanitizedRow.section,
         department: sanitizedRow.department,
         hoursPerWeek: sanitizedRow.hoursPerWeek,
         type: sanitizedRow.type || 'theory',
         isElective: sanitizedRow.isElective || false,
         isActive: true,
       });
-
-      // Mark as processed to avoid duplicates in the same batch
-      existingCodes.add(sanitizedRow.code.toUpperCase());
     }
 
-    // Insert all valid subjects at once
+   
     let insertedCount = 0;
     if (subjectsToInsert.length > 0) {
       try {
         await Subject.insertMany(subjectsToInsert, { ordered: false });
         insertedCount = subjectsToInsert.length;
       } catch (insertError) {
-        // Handle partial insert errors gracefully
         if (insertError.writeErrors) {
           insertedCount = subjectsToInsert.length - insertError.writeErrors.length;
           skipped += insertError.writeErrors.length;
@@ -196,7 +186,7 @@ exports.uploadSubjects = async (req, res, next) => {
       }
     }
 
-    // Respond with summary
+   
     res.status(201).json({
       success: true,
       inserted: insertedCount,
@@ -206,7 +196,7 @@ exports.uploadSubjects = async (req, res, next) => {
   } catch (error) {
     next(error);
   } finally {
-    // Clean up uploaded file
+   
     if (uploadedFilePath && fs.existsSync(uploadedFilePath)) {
       try {
         fs.unlinkSync(uploadedFilePath);
@@ -269,17 +259,20 @@ async function parseCSVFile(filePath) {
 function sanitizeRow(row) {
   const sanitized = {};
 
-  // Trim string fields
+ 
   sanitized.code = row.code ? String(row.code).trim() : null;
   sanitized.name = row.name ? String(row.name).trim() : null;
+  sanitized.course = row.course ? String(row.course).trim() : null;
+  sanitized.section = row.section ? String(row.section).trim() : null;
   sanitized.department = row.department ? String(row.department).trim() : null;
   sanitized.type = row.type ? String(row.type).trim().toLowerCase() : 'theory';
 
-  // Parse numeric field
+  const semesterValue = parseInt(row.semester, 10);
+  sanitized.semester = isNaN(semesterValue) ? null : semesterValue;
+
   const hoursValue = parseFloat(row.hoursPerWeek);
   sanitized.hoursPerWeek = isNaN(hoursValue) ? null : hoursValue;
 
-  // Parse boolean field (handles various formats: true, 'true', 1, 'yes', etc.)
   const isElectiveValue = row.isElective;
   if (typeof isElectiveValue === 'boolean') {
     sanitized.isElective = isElectiveValue;

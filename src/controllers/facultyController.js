@@ -15,7 +15,7 @@ async function resolveSubjects(subjectsInput) {
     if (mongoose.Types.ObjectId.isValid(item)) {
       resolvedIds.push(item);
     } else {
-      // Assume it's a subject code (string)
+     
       codesToFind.push(String(item).trim().toUpperCase());
     }
   });
@@ -28,14 +28,11 @@ async function resolveSubjects(subjectsInput) {
   return resolvedIds;
 }
 
-// @desc    Create a faculty
-// @route   POST /faculties
-// @access  Private/Admin
 exports.createFaculty = async (req, res, next) => {
   try {
     const { subjects, ...otherData } = req.body;
 
-    // Resolve subjects if provided
+   
     let subjectIds = subjects;
     if (subjects) {
       subjectIds = await resolveSubjects(subjects);
@@ -60,9 +57,6 @@ exports.createFaculty = async (req, res, next) => {
 
 // ... existing getFaculties ... (NOT REPLACING THIS PART, BUT SHOWING CONTEXT)
 
-// @desc    Bulk upload faculties with subjects from CSV/Excel
-// @route   POST /faculties/bulk-upload
-// @access  Private/Admin
 exports.bulkUploadFaculties = async (req, res, next) => {
   try {
     if (!req.file) {
@@ -92,17 +86,16 @@ exports.bulkUploadFaculties = async (req, res, next) => {
           throw new Error('Missing name or email');
         }
 
-        // 1. Process subjects (comma separated codes)
+       
         const subjectIds = [];
         if (row.subjects) {
-          // Check if it's already an array (unlikely from CSV but possible via other means?)
-          // Usually CSV gives string "CODE1, CODE2"
+         
           const codes = String(row.subjects).split(',').map(c => c.trim().toUpperCase());
           const foundSubjects = await Subject.find({ code: { $in: codes } });
           foundSubjects.forEach(s => subjectIds.push(s._id));
         }
 
-        // 2. Create or Update Faculty
+       
         let faculty = await Faculty.findOne({ email: row.email.toLowerCase() });
 
         const facultyData = {
@@ -135,9 +128,6 @@ exports.bulkUploadFaculties = async (req, res, next) => {
   }
 };
 
-// @desc    Get all faculties
-// @route   GET /faculties
-// @access  Private
 exports.getFaculties = async (req, res, next) => {
   try {
     const faculties = await Faculty.find({ isActive: true }).populate('subjects');
@@ -151,14 +141,11 @@ exports.getFaculties = async (req, res, next) => {
   }
 };
 
-// @desc    Update faculty
-// @route   PATCH /faculties/:id
-// @access  Private/Admin
 exports.updateFaculty = async (req, res, next) => {
   try {
     const { subjects, ...otherData } = req.body;
 
-    // Resolve subjects if provided
+   
     let updateData = { ...otherData };
     if (subjects) {
       updateData.subjects = await resolveSubjects(subjects);
@@ -186,9 +173,6 @@ exports.updateFaculty = async (req, res, next) => {
   }
 };
 
-// @desc    Delete faculty
-// @route   DELETE /faculties/:id
-// @access  Private/Admin
 exports.deleteFaculty = async (req, res, next) => {
   try {
     const faculty = await Faculty.findByIdAndUpdate(

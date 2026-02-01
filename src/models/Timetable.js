@@ -47,6 +47,7 @@ const timetableSchema = new mongoose.Schema(
         'Sequential (Morning to Evening)',
         'Distributed (Balanced Load)',
         'Grouped (Theory & Labs Separated)',
+        'Optimized Schedule (Genetic Algorithm)',
       ],
     },
     optionDescription: String,

@@ -6,7 +6,6 @@
 const generateSuggestions = (batch) => {
   const suggestions = [];
 
-  // Check for elective overlaps
   const electiveSubjects = batch.subjects.filter((s) => s.isElective);
   if (electiveSubjects.length > 0) {
     suggestions.push(
@@ -14,7 +13,6 @@ const generateSuggestions = (batch) => {
     );
   }
 
-  // Check for faculty load
   const facultyLoads = {};
   batch.subjects.forEach((s) => {
     if (!facultyLoads[s.faculty]) {
@@ -29,7 +27,6 @@ const generateSuggestions = (batch) => {
     }
   });
 
-  // Check for lab sessions
   const labSubjects = batch.subjects.filter((s) => s.subject.type === 'lab');
   if (labSubjects.length > 0) {
     suggestions.push(
@@ -37,7 +34,6 @@ const generateSuggestions = (batch) => {
     );
   }
 
-  // Check for practicals
   const practicalSubjects = batch.subjects.filter((s) => s.subject.type === 'practical');
   if (practicalSubjects.length > 0) {
     suggestions.push(
@@ -45,12 +41,12 @@ const generateSuggestions = (batch) => {
     );
   }
 
-  // NEP 2020 Flexibility suggestion
+ 
   suggestions.push(
     'Enable NEP 2020 flexibility by providing adequate free slots for interdisciplinary learning and skill development.'
   );
 
-  // Lunch break suggestion
+ 
   suggestions.push(
     'Maintain a lunch break window between 12:00 PM - 1:30 PM for all batches for better classroom utilization.'
   );

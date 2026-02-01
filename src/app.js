@@ -25,8 +25,8 @@ const app = express();
 // ========================================================
 app.use(
   cors({
-    origin: true,          // ⭐ Reflect request origin (allows ALL)
-    credentials: true,     // ⭐ Allow cookies
+    origin: true,         
+    credentials: true,    
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   })
 );

@@ -6,16 +6,14 @@ const { generateVerificationToken, sendVerificationEmail, sendPasswordResetEmail
 
 
 
-// Generate JWT Token
+
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: '7d',
   });
 };
 
-// ------------------------------------
-// REGISTER
-// ------------------------------------
+
 exports.register = async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body;
@@ -28,25 +26,25 @@ exports.register = async (req, res, next) => {
       });
     }
 
-    // Generate verification token
+
     const verificationToken = generateVerificationToken();
-    const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const user = await User.create({
       name,
       email,
       password,
-      role: role || 'staff',
+      role: role,
       emailVerificationToken: verificationToken,
       emailVerificationExpires: emailVerificationExpires,
       isEmailVerified: false,
     });
 
-    // Send verification email
+
     try {
       await sendVerificationEmail(email, verificationToken, name);
     } catch (emailError) {
-      // If email fails, delete the user
+
       await User.findByIdAndDelete(user._id);
       return res.status(500).json({
         success: false,
@@ -54,7 +52,7 @@ exports.register = async (req, res, next) => {
       });
     }
 
-    // Check if any classroom exists (system setup check)
+
     const classroomExists = await Classroom.findOne();
 
     res.status(201).json({
@@ -75,9 +73,7 @@ exports.register = async (req, res, next) => {
 };
 
 
-// ------------------------------------
-// LOGIN
-// ------------------------------------
+
 exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -97,7 +93,7 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // Check if email is verified
+
     if (!user.isEmailVerified) {
       return res.status(403).json({
         success: false,
@@ -115,10 +111,10 @@ exports.login = async (req, res, next) => {
 
     const token = generateToken(user._id);
 
-    // Cookie settings (LOCAL + PROD)
+
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+      secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/',
@@ -126,7 +122,7 @@ exports.login = async (req, res, next) => {
 
     console.log('✅ User logged in and cookie set:', user.email);
 
-    // Check if any classroom exists
+
     const classroomExists = await Classroom.findOne();
 
     res.status(200).json({
@@ -145,14 +141,12 @@ exports.login = async (req, res, next) => {
   }
 };
 
-// ------------------------------------
-// GET PROFILE (PRIVATE)
-// ------------------------------------
+
 exports.getProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
 
-    // Check if any classroom exists
+
     const classroomExists = await Classroom.findOne();
 
     res.status(200).json({
@@ -171,9 +165,7 @@ exports.getProfile = async (req, res, next) => {
   }
 };
 
-// ------------------------------------
-// LOGOUT
-// ------------------------------------
+
 exports.logout = async (req, res, next) => {
   try {
     res.clearCookie('token', {
@@ -194,9 +186,7 @@ exports.logout = async (req, res, next) => {
   }
 };
 
-// ------------------------------------
-// VERIFY EMAIL
-// ------------------------------------
+
 exports.verifyEmail = async (req, res, next) => {
   try {
     const { token } = req.query;
@@ -208,7 +198,7 @@ exports.verifyEmail = async (req, res, next) => {
       });
     }
 
-    // Find user with the verification token and check if it hasn't expired
+
     const user = await User.findOne({
       emailVerificationToken: token,
       emailVerificationExpires: { $gt: new Date() },
@@ -221,7 +211,7 @@ exports.verifyEmail = async (req, res, next) => {
       });
     }
 
-    // Mark email as verified and clear the token
+
     user.isEmailVerified = true;
     user.emailVerificationToken = null;
     user.emailVerificationExpires = null;
@@ -229,7 +219,7 @@ exports.verifyEmail = async (req, res, next) => {
 
     console.log('✅ Email verified for user:', user.email);
 
-    // Check if any classroom exists
+
     const classroomExists = await Classroom.findOne();
 
     res.status(200).json({
@@ -249,9 +239,7 @@ exports.verifyEmail = async (req, res, next) => {
   }
 };
 
-// ------------------------------------
-// RESEND VERIFICATION EMAIL
-// ------------------------------------
+
 exports.resendVerificationEmail = async (req, res, next) => {
   try {
     const { email } = req.body;
@@ -279,13 +267,13 @@ exports.resendVerificationEmail = async (req, res, next) => {
       });
     }
 
-    // Generate new verification token
+
     const verificationToken = generateVerificationToken();
     user.emailVerificationToken = verificationToken;
-    user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await user.save();
 
-    // Send verification email
+
     try {
       await sendVerificationEmail(email, verificationToken, user.name);
     } catch (emailError) {
@@ -303,9 +291,7 @@ exports.resendVerificationEmail = async (req, res, next) => {
     next(error);
   }
 };
-// ------------------------------------
-// FORGOT PASSWORD
-// ------------------------------------
+
 exports.forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
@@ -326,17 +312,17 @@ exports.forgotPassword = async (req, res, next) => {
       });
     }
 
-    // Generate password reset token
+
     const resetToken = crypto.randomBytes(32).toString('hex');
     user.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-    user.passwordResetExpires = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
+    user.passwordResetExpires = new Date(Date.now() + 1 * 60 * 60 * 1000);
     await user.save();
 
-    // Send password reset email
+
     try {
       await sendPasswordResetEmail(email, resetToken, user.name);
     } catch (emailError) {
-      // Clear the reset token if email fails
+
       user.passwordResetToken = null;
       user.passwordResetExpires = null;
       await user.save();
@@ -358,9 +344,7 @@ exports.forgotPassword = async (req, res, next) => {
   }
 };
 
-// ------------------------------------
-// RESET PASSWORD
-// ------------------------------------
+
 exports.resetPassword = async (req, res, next) => {
   try {
     const { token, newPassword, confirmPassword } = req.body;
@@ -393,10 +377,10 @@ exports.resetPassword = async (req, res, next) => {
       });
     }
 
-    // Hash the token to match it with the database
+
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
-    // Find user with the reset token and check if it hasn't expired
+
     const user = await User.findOne({
       passwordResetToken: hashedToken,
       passwordResetExpires: { $gt: new Date() },
@@ -409,7 +393,7 @@ exports.resetPassword = async (req, res, next) => {
       });
     }
 
-    // Update password and clear the reset token
+
     user.password = newPassword;
     user.passwordResetToken = null;
     user.passwordResetExpires = null;

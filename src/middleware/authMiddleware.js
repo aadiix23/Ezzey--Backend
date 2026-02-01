@@ -4,7 +4,7 @@ const User = require('../models/User');
 exports.protect = async (req, res, next) => {
   let token;
 
-  // Read token from HTTP-only cookie instead of Authorization header
+ 
   if (req.cookies && req.cookies.token) {
     token = req.cookies.token;
   }

@@ -2,9 +2,6 @@ const Classroom = require('../models/Classroom');
 const XLSX = require('xlsx');
 const path = require('path');
 
-// @desc    Create a classroom
-// @route   POST /classrooms
-// @access  Private/Admin
 exports.createClassroom = async (req, res, next) => {
   try {
     const classroom = await Classroom.create(req.body);
@@ -18,12 +15,8 @@ exports.createClassroom = async (req, res, next) => {
   }
 };
 
-// @desc    Bulk upload classrooms from CSV/Excel
-// @route   POST /classrooms/bulk-upload
-// @access  Private/Admin
 exports.bulkUploadClassrooms = async (req, res, next) => {
   try {
-    // Check if file is provided
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -36,7 +29,6 @@ exports.bulkUploadClassrooms = async (req, res, next) => {
 
     let data = [];
 
-    // Parse Excel/CSV file from buffer
     const workbook = XLSX.read(file.buffer, { type: 'buffer' });
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
     data = XLSX.utils.sheet_to_json(worksheet);
@@ -48,7 +40,6 @@ exports.bulkUploadClassrooms = async (req, res, next) => {
       });
     }
 
-    // Validate and process data
     const results = {
       successful: [],
       failed: [],
@@ -58,17 +49,15 @@ exports.bulkUploadClassrooms = async (req, res, next) => {
       try {
         const row = data[i];
 
-        // Validate required fields
         if (!row.name || !row.capacity) {
           results.failed.push({
-            row: i + 2, // +2 because row 1 is header, array starts at 0
+            row: i + 2,
             reason: 'Missing required fields (name, capacity)',
             data: row,
           });
           continue;
         }
 
-        // Validate capacity is a number
         const capacity = Number(row.capacity);
         if (isNaN(capacity) || capacity < 1) {
           results.failed.push({
@@ -79,7 +68,6 @@ exports.bulkUploadClassrooms = async (req, res, next) => {
           continue;
         }
 
-        // Validate type if provided
         const validTypes = ['lecture', 'lab', 'seminar'];
         const type = row.type?.toLowerCase() || 'lecture';
         if (!validTypes.includes(type)) {
@@ -91,7 +79,6 @@ exports.bulkUploadClassrooms = async (req, res, next) => {
           continue;
         }
 
-        // Create classroom
         const classroomData = {
           name: row.name.trim(),
           capacity: capacity,
@@ -105,7 +92,6 @@ exports.bulkUploadClassrooms = async (req, res, next) => {
           name: classroom.name,
         });
       } catch (error) {
-        // Handle duplicate key or other database errors
         results.failed.push({
           row: i + 2,
           reason: error.message.includes('duplicate key')
@@ -126,9 +112,6 @@ exports.bulkUploadClassrooms = async (req, res, next) => {
   }
 };
 
-// @desc    Get all classrooms
-// @route   GET /classrooms
-// @access  Private
 exports.getClassrooms = async (req, res, next) => {
   try {
     const classrooms = await Classroom.find({ isActive: true });
@@ -142,9 +125,6 @@ exports.getClassrooms = async (req, res, next) => {
   }
 };
 
-// @desc    Update classroom
-// @route   PATCH /classrooms/:id
-// @access  Private/Admin
 exports.updateClassroom = async (req, res, next) => {
   try {
     const classroom = await Classroom.findByIdAndUpdate(req.params.id, req.body, {
@@ -169,9 +149,6 @@ exports.updateClassroom = async (req, res, next) => {
   }
 };
 
-// @desc    Delete classroom
-// @route   DELETE /classrooms/:id
-// @access  Private/Admin
 exports.deleteClassroom = async (req, res, next) => {
   try {
     const classroom = await Classroom.findByIdAndUpdate(

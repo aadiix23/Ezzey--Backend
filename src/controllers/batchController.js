@@ -1,16 +1,116 @@
 const Batch = require('../models/Batch');
+const Faculty = require('../models/Faculty');
+const Subject = require('../models/Subject');
 
-// @desc    Create a batch
-// @route   POST /batches
-// @access  Private/Admin
+const autoAssignFaculty = async (subjectsInput) => {
+  const assignments = [];
+
+  for (const subjectInput of subjectsInput) {
+
+    const subjectId = subjectInput.subject || subjectInput;
+    const isElective = subjectInput.isElective || false;
+
+
+    const subject = await Subject.findById(subjectId);
+    if (!subject) {
+      throw new Error(`Subject with ID ${subjectId} not found`);
+    }
+
+
+    const qualifiedFaculty = await Faculty.find({
+      subjects: subjectId,
+      isActive: true,
+    });
+
+    if (qualifiedFaculty.length === 0) {
+      throw new Error(
+        `No qualified faculty found for subject: ${subject.name} (${subject.code}). Please assign this subject to at least one faculty member first.`
+      );
+    }
+
+
+    const facultyWithWorkload = await Promise.all(
+      qualifiedFaculty.map(async (faculty) => {
+
+        const batches = await Batch.find({
+          'subjects.faculty': faculty._id,
+          isActive: true,
+        }).populate('subjects.subject');
+
+
+        let totalHours = 0;
+        batches.forEach((batch) => {
+          batch.subjects.forEach((sub) => {
+            if (sub.faculty.toString() === faculty._id.toString()) {
+              totalHours += sub.subject.hoursPerWeek || 0;
+            }
+          });
+        });
+
+        return {
+          faculty,
+          currentLoad: totalHours,
+          availableLoad: faculty.maxLoad - totalHours,
+        };
+      })
+    );
+
+
+    const availableFaculty = facultyWithWorkload.filter(
+      (f) => f.availableLoad >= subject.hoursPerWeek
+    );
+
+    if (availableFaculty.length === 0) {
+
+      const leastLoaded = facultyWithWorkload.reduce((prev, current) =>
+        prev.availableLoad > current.availableLoad ? prev : current
+      );
+
+
+      assignments.push({
+        subject: subjectId,
+        faculty: leastLoaded.faculty._id,
+        isElective,
+      });
+    } else {
+
+      const bestFaculty = availableFaculty.reduce((prev, current) =>
+        prev.availableLoad > current.availableLoad ? prev : current
+      );
+
+      assignments.push({
+        subject: subjectId,
+        faculty: bestFaculty.faculty._id,
+        isElective,
+      });
+    }
+  }
+
+  return assignments;
+};
+
 exports.createBatch = async (req, res, next) => {
   try {
-    const batch = await Batch.create(req.body);
+    const batchData = { ...req.body };
+
+
+    if (batchData.subjects && batchData.subjects.length > 0) {
+
+      const needsAutoAssignment = batchData.subjects.some(
+        (sub) => !sub.faculty
+      );
+
+      if (needsAutoAssignment) {
+        batchData.subjects = await autoAssignFaculty(batchData.subjects);
+      }
+    }
+
+    const batch = await Batch.create(batchData);
     await batch.populate('subjects.subject subjects.faculty');
 
     res.status(201).json({
       success: true,
-      message: 'Batch created successfully',
+      message: 'Batch created successfully with auto-assigned faculty',
       data: batch,
     });
   } catch (error) {
@@ -18,23 +118,9 @@ exports.createBatch = async (req, res, next) => {
   }
 };
 
-// @desc    Get all batches
-// @route   GET /batches
-// @access  Private
 exports.getBatches = async (req, res, next) => {
   try {
-    // DEBUG: Log what is found
-    const allBatches = await Batch.find({});
-    const activeBatches = await Batch.find({ isActive: true });
 
-    console.log(`[API DEBUG] Total Batches in DB: ${allBatches.length}`);
-    console.log(`[API DEBUG] Active Batches: ${activeBatches.length}`);
-    const target = allBatches.find(b => b.code === 'CSE_FULL_2025');
-    if (target) {
-      console.log(`[API DEBUG] Target Batch Found: ${target.name} | Active: ${target.isActive} | ID: ${target._id}`);
-    } else {
-      console.log('[API DEBUG] Target Batch CSE_FULL_2025 NOT in DB');
-    }
 
     const batches = await Batch.find({ isActive: true }).populate(
       'subjects.subject subjects.faculty'
@@ -42,16 +128,16 @@ exports.getBatches = async (req, res, next) => {
 
     const formattedBatches = batches.map(batch => ({
       _id: batch._id,
-      degree: batch.course, // Mapping based on previous context
+      degree: batch.course,
       course: batch.course,
       batchCode: batch.code,
       department: batch.department,
       capacity: batch.strength,
       semester: batch.semester,
-      section: batch.name, // "Section" maps to "name" in schema
+      section: batch.name,
       assignedSubjects: batch.subjects ? batch.subjects.length : 0,
 
-      // Keep original full object optionally if needed for editing
+
       raw: batch
     }));
 
@@ -65,12 +151,22 @@ exports.getBatches = async (req, res, next) => {
   }
 };
 
-// @desc    Update batch
-// @route   PATCH /batches/:id
-// @access  Private/Admin
 exports.updateBatch = async (req, res, next) => {
   try {
-    const batch = await Batch.findByIdAndUpdate(req.params.id, req.body, {
+    const updateData = { ...req.body };
+
+
+    if (updateData.subjects && updateData.subjects.length > 0) {
+      const needsAutoAssignment = updateData.subjects.some(
+        (sub) => !sub.faculty
+      );
+
+      if (needsAutoAssignment) {
+        updateData.subjects = await autoAssignFaculty(updateData.subjects);
+      }
+    }
+
+    const batch = await Batch.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true,
     }).populate('subjects.subject subjects.faculty');
@@ -84,7 +180,7 @@ exports.updateBatch = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Batch updated successfully',
+      message: 'Batch updated successfully with auto-assigned faculty',
       data: batch,
     });
   } catch (error) {
@@ -92,12 +188,54 @@ exports.updateBatch = async (req, res, next) => {
   }
 };
 
-// @desc    Delete batch
-// @route   DELETE /batches/:id
-// @access  Private/Admin
-// @desc    Delete batch
-// @route   DELETE /batches/:id
-// @access  Private/Admin
+exports.addSubjectsToBatch = async (req, res, next) => {
+  try {
+    const { subjects } = req.body;
+
+    if (!subjects || !Array.isArray(subjects) || subjects.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide an array of subjects',
+      });
+    }
+
+
+    const batch = await Batch.findById(req.params.id);
+    if (!batch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Batch not found',
+      });
+    }
+
+
+    const newAssignments = await autoAssignFaculty(subjects);
+
+
+    const existingSubjectIds = batch.subjects.map((s) =>
+      s.subject.toString()
+    );
+
+    newAssignments.forEach((assignment) => {
+      if (!existingSubjectIds.includes(assignment.subject.toString())) {
+        batch.subjects.push(assignment);
+      }
+    });
+
+    await batch.save();
+    await batch.populate('subjects.subject subjects.faculty');
+
+    res.status(200).json({
+      success: true,
+      message: `${newAssignments.length} subject(s) added with auto-assigned faculty`,
+      data: batch,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 exports.deleteBatch = async (req, res, next) => {
   try {
     await Batch.findByIdAndDelete(req.params.id);
@@ -111,15 +249,12 @@ exports.deleteBatch = async (req, res, next) => {
   }
 };
 
-// @desc    Seed a full batch for testing
-// @route   POST /batches/seed-full
-// @access  Public (Dev)
 exports.seedFullBatch = async (req, res, next) => {
   try {
     const Subject = require('../models/Subject');
     const Faculty = require('../models/Faculty');
 
-    // 1. Create Dedicated Faculty
+
     const facultyNames = ['Dr. Alpha', 'Dr. Beta', 'Dr. Gamma', 'Dr. Delta', 'Dr. Epsilon'];
     const facultyIds = [];
 
@@ -137,8 +272,6 @@ exports.seedFullBatch = async (req, res, next) => {
       facultyIds.push(fac._id);
     }
 
-    // 2. Create Subjects (Total 35 Hours)
-    // 2. Create Subjects (Total 35 Hours)
     const subjectsData = [
       { name: 'Full Stack Lab', code: 'FSL101', type: 'lab', hoursPerWeek: 4, facultyIdx: 0 },
       { name: 'AI/ML Lab', code: 'AIL102', type: 'lab', hoursPerWeek: 4, facultyIdx: 1 },
@@ -174,7 +307,7 @@ exports.seedFullBatch = async (req, res, next) => {
       });
     }
 
-    // 3. Create/Update Batch
+
     const batchCode = 'CSE_FULL_2025';
     let batch = await Batch.findOne({ code: batchCode });
 

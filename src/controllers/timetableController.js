@@ -3,9 +3,6 @@ const Batch = require('../models/Batch');
 const { generateMultipleTimetables, validateTimetable } = require('../timetable/algorithm');
 const { generateSuggestions } = require('../services/suggestionService');
 
-// @desc    Generate multiple timetable options
-// @route   POST /timetable/generate
-// @access  Private
 exports.generateTimetable = async (req, res, next) => {
   try {
     const { batchId } = req.body;
@@ -79,7 +76,7 @@ exports.generateTimetable = async (req, res, next) => {
     for (let i = 0; i < timetableOptions.length; i++) {
       const option = timetableOptions[i];
 
-      // Skip invalid/empty generations
+     
       if (!option.weekSlots || option.weekSlots.length === 0) {
         continue;
       }
@@ -144,9 +141,6 @@ exports.generateTimetable = async (req, res, next) => {
   }
 };
 
-// @desc    Save selected timetable
-// @route   POST /timetable/save
-// @access  Private
 exports.saveTimetable = async (req, res, next) => {
   try {
     const { timetableId, status } = req.body;
@@ -186,9 +180,6 @@ exports.saveTimetable = async (req, res, next) => {
   }
 };
 
-// @desc    Get timetable by ID
-// @route   GET /timetable/:id
-// @access  Private
 exports.getTimetableById = async (req, res, next) => {
   try {
     const timetable = await Timetable.findById(req.params.id).populate([
@@ -215,9 +206,6 @@ exports.getTimetableById = async (req, res, next) => {
   }
 };
 
-// @desc    Get all timetables for batch
-// @route   GET /timetable/batch/:batchId
-// @access  Private
 exports.getTimetableByBatch = async (req, res, next) => {
   try {
     const timetables = await Timetable.find({
@@ -242,9 +230,6 @@ exports.getTimetableByBatch = async (req, res, next) => {
   }
 };
 
-// @desc    Get timetables by faculty
-// @route   GET /timetable/faculty/:facultyId
-// @access  Private
 exports.getTimetableByFaculty = async (req, res, next) => {
   try {
     const timetables = await Timetable.find({
@@ -269,12 +254,6 @@ exports.getTimetableByFaculty = async (req, res, next) => {
   }
 };
 
-// @desc    Get all timetables
-// @route   GET /timetable
-// @access  Private
-// @desc    Get list of timetables (metadata only, no slots)
-// @route   GET /timetable/list
-// @access  Private
 exports.getTimetableList = async (req, res, next) => {
   try {
     const { status, batchId, limit = 10, page = 1 } = req.query;
@@ -294,13 +273,13 @@ exports.getTimetableList = async (req, res, next) => {
     const skip = (Number(page) - 1) * Number(limit);
 
     const pipeline = [
-      // 1. Filter
+     
       { $match: matchStage },
 
-      // 2. Sort by newest first
+     
       { $sort: { createdAt: -1 } },
 
-      // 3. Group by Batch + OptionNumber to deduplicate
+     
       {
         $group: {
           _id: {
@@ -311,10 +290,10 @@ exports.getTimetableList = async (req, res, next) => {
         },
       },
 
-      // 4. Restore document structure
+     
       { $replaceRoot: { newRoot: '$doc' } },
 
-      // 5. Project away the heavy 'weekSlots' and 'suggestions'
+     
       {
         $project: {
           weekSlots: 0,
@@ -322,17 +301,17 @@ exports.getTimetableList = async (req, res, next) => {
         },
       },
 
-      // 6. Sort again
+     
       { $sort: { createdAt: -1 } },
 
-      // 7. Facet for Pagination
+     
       {
         $facet: {
           metadata: [{ $count: 'total' }],
           data: [
             { $skip: skip },
             { $limit: Number(limit) },
-            // Populate Batch
+           
             {
               $lookup: {
                 from: 'batches',
@@ -347,7 +326,7 @@ exports.getTimetableList = async (req, res, next) => {
                 preserveNullAndEmptyArrays: false,
               },
             },
-            // Populate GeneratedBy (User)
+           
             {
               $lookup: {
                 from: 'users',
@@ -367,17 +346,17 @@ exports.getTimetableList = async (req, res, next) => {
                 _id: 1,
                 status: 1,
                 createdAt: 1,
-                // Flatten Batch Details
-                degree: '$batch.course', // Now directly mapped
+               
+                degree: '$batch.course',
                 course: '$batch.course',
                 department: '$batch.department',
                 semester: '$batch.semester',
-                section: '$batch.name', // "Section" corresponds to batch name (e.g., "A", "Morning Batch")
+                section: '$batch.name',
                 batchCode: '$batch.code',
                 capacity: '$batch.strength',
                 batchId: '$batch._id',
 
-                // Metadata
+               
                 conflictCount: 1,
                 optionNumber: 1,
                 optionName: 1,
@@ -405,9 +384,6 @@ exports.getTimetableList = async (req, res, next) => {
   }
 };
 
-// @desc    Get all timetables
-// @route   GET /timetable
-// @access  Private
 exports.getAllTimetables = async (req, res, next) => {
   try {
     const { status, batchId, limit = 10, page = 1 } = req.query;
@@ -418,10 +394,9 @@ exports.getAllTimetables = async (req, res, next) => {
     }
 
     if (batchId) {
-      // Ensure batchId is an ObjectId if filtering by valid ID, or just string if mixed
-      // Usually req.query is string, but for $match with ObjectId it's safer to cast if needed.
-      // Assuming simple string match works if stored as string, but standard Mongoose uses ObjectId.
-      // Let's use mongoose.Types.ObjectId if valid.
+     
+     
+     
       const mongoose = require('mongoose');
       if (mongoose.Types.ObjectId.isValid(batchId)) {
         matchStage.batch = new mongoose.Types.ObjectId(batchId);
@@ -431,13 +406,13 @@ exports.getAllTimetables = async (req, res, next) => {
     const skip = (Number(page) - 1) * Number(limit);
 
     const pipeline = [
-      // 1. Filter
+     
       { $match: matchStage },
 
-      // 2. Sort by newest first (so we keep the latest one in group)
+     
       { $sort: { createdAt: -1 } },
 
-      // 3. Group by Batch + OptionNumber to deduplicate
+     
       {
         $group: {
           _id: {
@@ -448,20 +423,20 @@ exports.getAllTimetables = async (req, res, next) => {
         },
       },
 
-      // 4. Restore document structure
+     
       { $replaceRoot: { newRoot: '$doc' } },
 
-      // 5. Sort again to ensure final list is ordered by creation (optional but good for consistency)
+     
       { $sort: { createdAt: -1 } },
 
-      // 6. Facet for Pagination (Meta count + Data)
+     
       {
         $facet: {
           metadata: [{ $count: 'total' }],
           data: [
             { $skip: skip },
             { $limit: Number(limit) },
-            // Populate Batch
+           
             {
               $lookup: {
                 from: 'batches',
@@ -476,7 +451,7 @@ exports.getAllTimetables = async (req, res, next) => {
                 preserveNullAndEmptyArrays: true,
               },
             },
-            // Populate GeneratedBy (User)
+           
             {
               $lookup: {
                 from: 'users',
@@ -512,9 +487,6 @@ exports.getAllTimetables = async (req, res, next) => {
   }
 };
 
-// @desc    Get suggestions
-// @route   POST /timetable/suggestions
-// @access  Private
 exports.generateSuggestionsForTimetable = async (req, res, next) => {
   try {
     const { batchId } = req.body;
@@ -548,9 +520,6 @@ exports.generateSuggestionsForTimetable = async (req, res, next) => {
   }
 };
 
-// @desc    Get visual timetable as HTML
-// @route   GET /timetable/visual/:batchId
-// @access  Private
 exports.getVisualTimetable = async (req, res, next) => {
   try {
     const timetable = await Timetable.findOne({
@@ -569,12 +538,11 @@ exports.getVisualTimetable = async (req, res, next) => {
       return res.status(404).send('<h1>Timetable not found for this batch</h1>');
     }
 
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const timeSlots = [
       '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'
     ];
 
-    // Map slots to grid
     const grid = {};
     timeSlots.forEach(time => {
       grid[time] = {};
@@ -589,7 +557,6 @@ exports.getVisualTimetable = async (req, res, next) => {
       }
     });
 
-    // Generate HTML
     const html = `
     <!DOCTYPE html>
     <html lang="en">
@@ -722,9 +689,6 @@ exports.getVisualTimetable = async (req, res, next) => {
   }
 };
 
-// @desc    Delete timetable
-// @route   DELETE /timetable/:id
-// @access  Private/Admin
 exports.deleteTimetable = async (req, res, next) => {
   try {
     const timetable = await Timetable.findByIdAndDelete(req.params.id);

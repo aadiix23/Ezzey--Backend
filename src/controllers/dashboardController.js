@@ -3,11 +3,7 @@ const Subject = require('../models/Subject');
 const Faculty = require('../models/Faculty');
 const Timetable = require('../models/Timetable');
 
-/* -------------------------------------------------------------
-    Helper Functions
-------------------------------------------------------------- */
 
-// 1️⃣ FACULTY UTILIZATION (detailed)
 async function calculateFacultyUtilization() {
   const timetables = await Timetable.find({ status: 'approved' });
 
@@ -38,9 +34,9 @@ async function calculateFacultyUtilization() {
   });
 }
 
-// 2️⃣ CLASSROOM UTILIZATION (detailed)
+
 async function calculateClassroomUtilization() {
-  const totalPeriodsPerWeek = 6 * 7; // Change if needed
+  const totalPeriodsPerWeek = 6 * 7;
   const timetables = await Timetable.find({ status: 'approved' });
 
   const roomMap = {};
@@ -69,7 +65,7 @@ async function calculateClassroomUtilization() {
   });
 }
 
-// 3️⃣ BLANK PERIODS (overall OCCUPANCY %)
+
 async function calculateBlankPeriods() {
   const periods = 6 * 7;
   const totalClassrooms = await Classroom.countDocuments({ isActive: true });
@@ -95,9 +91,7 @@ async function calculateBlankPeriods() {
   return { vacancy: Number(vacancy.toFixed(2)) };
 }
 
-/* -------------------------------------------------------------
-    DASHBOARD SUMMARY  ✅ CLEAN VERSION
-------------------------------------------------------------- */
+
 
 exports.getDashboardSummary = async (req, res, next) => {
   try {
@@ -114,14 +108,14 @@ exports.getDashboardSummary = async (req, res, next) => {
       Classroom.countDocuments({ isActive: true }),
       Subject.countDocuments({ isActive: true }),
       Faculty.countDocuments({ isActive: true }),
-      Timetable.countDocuments({ status: 'approved' }),
+      Timetable.countDocuments(),
       Faculty.find({ isActive: true }).select('name'),
       calculateFacultyUtilization(),
       calculateClassroomUtilization(),
       calculateBlankPeriods(),
     ]);
 
-    // AVG faculty utilization
+
     const avgFacultyUtilization =
       facultyUtilizationDetails.length > 0
         ? Number(
@@ -134,7 +128,7 @@ exports.getDashboardSummary = async (req, res, next) => {
         )
         : 0;
 
-    // AVG classroom utilization
+
     const avgClassroomUtilization =
       classroomUtilizationDetails.length > 0
         ? Number(
@@ -147,7 +141,7 @@ exports.getDashboardSummary = async (req, res, next) => {
         )
         : 0;
 
-    // Blank periods = vacancy %
+
     const blankPeriods = blankPeriodsDetails.vacancy || 0;
 
     res.status(200).json({
@@ -160,7 +154,7 @@ exports.getDashboardSummary = async (req, res, next) => {
         totalApprovedTimetables: totalTimetables,
         facultyList,
 
-        // FINAL data your UI needs (only 3 numbers)
+
         quickReport: {
           facultyUtilization: avgFacultyUtilization,
           classroomUtilization: avgClassroomUtilization,
@@ -177,9 +171,7 @@ exports.getDashboardSummary = async (req, res, next) => {
   }
 };
 
-/* -------------------------------------------------------------
-    EXTENDED DASHBOARD (unchanged)
-------------------------------------------------------------- */
+
 
 exports.getExtendedDashboard = async (req, res, next) => {
   try {
@@ -224,9 +216,7 @@ exports.getExtendedDashboard = async (req, res, next) => {
   }
 };
 
-/* -------------------------------------------------------------
-    DASHBOARD STATS (unchanged)
-------------------------------------------------------------- */
+
 
 exports.getDashboardStats = async (req, res, next) => {
   try {
