@@ -36,8 +36,8 @@ const subjectSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['theory', 'lab', 'practical', 'seminar'],
-      default: 'theory',
+      enum: ['lecture', 'lab', 'seminar'],
+      default: 'lecture',
     },
     isElective: {
       type: Boolean,

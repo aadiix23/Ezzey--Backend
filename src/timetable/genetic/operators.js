@@ -40,7 +40,7 @@ function crossover(parent1, parent2) {
         ...parent1.genes.slice(point)
     ];
 
-   
+
     const child1 = new Chromosome(repairChromosome(child1Genes, parent1.genes));
     const child2 = new Chromosome(repairChromosome(child2Genes, parent2.genes));
 

@@ -76,7 +76,7 @@ exports.generateTimetable = async (req, res, next) => {
     for (let i = 0; i < timetableOptions.length; i++) {
       const option = timetableOptions[i];
 
-     
+
       if (!option.weekSlots || option.weekSlots.length === 0) {
         continue;
       }
@@ -273,13 +273,13 @@ exports.getTimetableList = async (req, res, next) => {
     const skip = (Number(page) - 1) * Number(limit);
 
     const pipeline = [
-     
+
       { $match: matchStage },
 
-     
+
       { $sort: { createdAt: -1 } },
 
-     
+
       {
         $group: {
           _id: {
@@ -290,10 +290,10 @@ exports.getTimetableList = async (req, res, next) => {
         },
       },
 
-     
+
       { $replaceRoot: { newRoot: '$doc' } },
 
-     
+
       {
         $project: {
           weekSlots: 0,
@@ -301,17 +301,17 @@ exports.getTimetableList = async (req, res, next) => {
         },
       },
 
-     
+
       { $sort: { createdAt: -1 } },
 
-     
+
       {
         $facet: {
           metadata: [{ $count: 'total' }],
           data: [
             { $skip: skip },
             { $limit: Number(limit) },
-           
+
             {
               $lookup: {
                 from: 'batches',
@@ -326,7 +326,7 @@ exports.getTimetableList = async (req, res, next) => {
                 preserveNullAndEmptyArrays: false,
               },
             },
-           
+
             {
               $lookup: {
                 from: 'users',
@@ -346,7 +346,7 @@ exports.getTimetableList = async (req, res, next) => {
                 _id: 1,
                 status: 1,
                 createdAt: 1,
-               
+
                 degree: '$batch.course',
                 course: '$batch.course',
                 department: '$batch.department',
@@ -356,7 +356,7 @@ exports.getTimetableList = async (req, res, next) => {
                 capacity: '$batch.strength',
                 batchId: '$batch._id',
 
-               
+
                 conflictCount: 1,
                 optionNumber: 1,
                 optionName: 1,
@@ -394,9 +394,9 @@ exports.getAllTimetables = async (req, res, next) => {
     }
 
     if (batchId) {
-     
-     
-     
+
+
+
       const mongoose = require('mongoose');
       if (mongoose.Types.ObjectId.isValid(batchId)) {
         matchStage.batch = new mongoose.Types.ObjectId(batchId);
@@ -406,13 +406,13 @@ exports.getAllTimetables = async (req, res, next) => {
     const skip = (Number(page) - 1) * Number(limit);
 
     const pipeline = [
-     
+
       { $match: matchStage },
 
-     
+
       { $sort: { createdAt: -1 } },
 
-     
+
       {
         $group: {
           _id: {
@@ -423,20 +423,20 @@ exports.getAllTimetables = async (req, res, next) => {
         },
       },
 
-     
+
       { $replaceRoot: { newRoot: '$doc' } },
 
-     
+
       { $sort: { createdAt: -1 } },
 
-     
+
       {
         $facet: {
           metadata: [{ $count: 'total' }],
           data: [
             { $skip: skip },
             { $limit: Number(limit) },
-           
+
             {
               $lookup: {
                 from: 'batches',
@@ -451,7 +451,7 @@ exports.getAllTimetables = async (req, res, next) => {
                 preserveNullAndEmptyArrays: true,
               },
             },
-           
+
             {
               $lookup: {
                 from: 'users',
@@ -552,8 +552,14 @@ exports.getVisualTimetable = async (req, res, next) => {
     });
 
     timetable.weekSlots.forEach(slot => {
-      if (grid[slot.startTime]) {
-        grid[slot.startTime][slot.day] = slot;
+      const startHour = parseInt(slot.startTime.split(':')[0], 10);
+      const endHour = parseInt(slot.endTime.split(':')[0], 10);
+
+      for (let h = startHour; h < endHour; h++) {
+        const timeKey = `${h.toString().padStart(2, '0')}:00`;
+        if (grid[timeKey]) {
+          grid[timeKey][slot.day] = slot;
+        }
       }
     });
 

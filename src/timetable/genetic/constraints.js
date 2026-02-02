@@ -214,8 +214,8 @@ function countWorkingHoursViolations(chromosome) {
  * This is ensured by the chromosome structure (duration field)
  */
 function countContinuityViolations(chromosome) {
-   
-   
+
+
     return 0;
 }
 
@@ -234,7 +234,7 @@ function countGaps(chromosome) {
         const dayGenes = chromosome.genes.filter(g => g.day === day);
         if (dayGenes.length === 0) return;
 
-       
+
         dayGenes.sort((a, b) => getMinutes(a.startTime) - getMinutes(b.startTime));
 
         for (let i = 0; i < dayGenes.length - 1; i++) {
@@ -271,10 +271,10 @@ function calculateLoadImbalance(chromosome) {
 }
 
 /**
- * SC3: Morning Preference for Theory
- * Prefer morning slots for theory, afternoon for labs
+ * SC3: Morning Preference for Lecture
+ * Prefer morning slots for lecture, afternoon for labs
  */
-function countAfternoonTheory(chromosome, subjects) {
+function countAfternoonLecture(chromosome, subjects) {
     let count = 0;
 
     chromosome.genes.forEach(gene => {
@@ -337,7 +337,7 @@ function countMissingHoursViolations(chromosome, subjects) {
         const required = subject.hoursPerWeek || 3;
 
         if (scheduled !== required) {
-           
+
             violations += Math.abs(required - scheduled);
         }
     });
@@ -377,8 +377,10 @@ function evaluateSoftConstraints(chromosome, subjects) {
     const penalty =
         countGaps(chromosome) * 10 +
         calculateLoadImbalance(chromosome) * 5 +
-        countAfternoonTheory(chromosome, subjects) * 3 +
+        calculateLoadImbalance(chromosome) * 5 +
+        countAfternoonLecture(chromosome, subjects) * 3 +
         countConsecutiveDays(chromosome) * 2;
+    countConsecutiveDays(chromosome) * 2;
 
     return penalty;
 }
@@ -390,8 +392,8 @@ function evaluateSoftConstraints(chromosome, subjects) {
 function calculateFitness(chromosome, batch, subjects, rooms) {
     const hardScore = evaluateHardConstraints(chromosome, batch, subjects, rooms);
 
-   
-   
+
+
     if (hardScore === 0) {
         const violations =
             countFacultyOverlaps(chromosome) +
@@ -405,8 +407,8 @@ function calculateFitness(chromosome, batch, subjects, rooms) {
             countContinuityViolations(chromosome) +
             countMissingHoursViolations(chromosome, subjects);
 
-       
-       
+
+
         return 1000 - (violations * 10) - evaluateSoftConstraints(chromosome, subjects);
     }
 
@@ -433,7 +435,7 @@ function getConstraintReport(chromosome, batch, subjects, rooms) {
         softConstraints: {
             gaps: countGaps(chromosome),
             loadImbalance: calculateLoadImbalance(chromosome),
-            afternoonTheory: countAfternoonTheory(chromosome, subjects),
+            afternoonLecture: countAfternoonLecture(chromosome, subjects),
             consecutiveDays: countConsecutiveDays(chromosome),
         },
         fitness: calculateFitness(chromosome, batch, subjects, rooms),
@@ -441,7 +443,7 @@ function getConstraintReport(chromosome, batch, subjects, rooms) {
 }
 
 module.exports = {
-   
+
     countFacultyOverlaps,
     countRoomOverlaps,
     countStudentOverlaps,
@@ -453,19 +455,19 @@ module.exports = {
     countContinuityViolations,
     countMissingHoursViolations,
 
-   
+
     countGaps,
     calculateLoadImbalance,
-    countAfternoonTheory,
+    countAfternoonLecture,
     countConsecutiveDays,
 
-   
+
     evaluateHardConstraints,
     evaluateSoftConstraints,
     calculateFitness,
     getConstraintReport,
 
-   
+
     getEndTime,
     timeRangesOverlap,
 };

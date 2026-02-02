@@ -37,13 +37,11 @@ function randomInt(min, max) {
  * Returns array of durations, e.g., 4h -> [2, 2], 3h -> [2, 1]
  */
 function getBlockDurations(subject) {
-    const isLab = subject.type === 'lab';
+    const isMultiHour = ['lab', 'seminar'].includes(subject.type);
     let hoursNeeded = subject.hoursPerWeek || 3;
     const blocks = [];
 
-   
-   
-    const BLOCK_SIZE = 1;
+    const BLOCK_SIZE = isMultiHour ? 2 : 1;
 
     while (hoursNeeded > 0) {
         const duration = Math.min(hoursNeeded, BLOCK_SIZE);
@@ -71,7 +69,7 @@ function generateRandomChromosome(batch, rooms) {
     const genes = [];
     const usedSlots = new Set();
 
-   
+
     batch.subjects.forEach(subjectEntry => {
         const subject = subjectEntry.subject;
         const faculty = subjectEntry.faculty;
@@ -84,7 +82,7 @@ function generateRandomChromosome(batch, rooms) {
             return;
         }
 
-       
+
         blockDurations.forEach((duration, i) => {
             let placed = false;
             let attempts = 0;
@@ -97,13 +95,13 @@ function generateRandomChromosome(batch, rooms) {
                 type: subject.type,
             };
 
-           
+
             while (!placed && attempts < maxAttempts) {
                 const day = randomChoice(days);
                 const timeSlot = randomChoice(timeSlots);
                 const room = randomChoice(roomPool);
 
-               
+
                 let isBlocked = false;
                 for (let k = 0; k < duration; k++) {
                     const slotIndex = timeSlots.findIndex(ts => ts.start === timeSlot.start);
@@ -113,7 +111,7 @@ function generateRandomChromosome(batch, rooms) {
                     }
 
                     const currentSlot = timeSlots[slotIndex + k];
-                   
+
                     const key = `${day}-${currentSlot.start}-${room._id}`;
                     if (usedSlots.has(key)) {
                         isBlocked = true;
@@ -139,7 +137,7 @@ function generateRandomChromosome(batch, rooms) {
                 attempts++;
             }
 
-           
+
             if (!placed) {
                 const day = randomChoice(days);
                 const timeSlot = randomChoice(timeSlots);
@@ -191,7 +189,7 @@ function tournamentSelection(population, tournamentSize = 3) {
         tournament.push(population[randomIndex]);
     }
 
-   
+
     tournament.sort((a, b) => b.fitness - a.fitness);
     return tournament[0];
 }

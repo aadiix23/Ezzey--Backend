@@ -19,7 +19,7 @@ const slotSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['theory', 'lab', 'practical', 'seminar'],
+      enum: ['lecture', 'lab', 'seminar'],
     },
   },
   { _id: false }

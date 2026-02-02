@@ -14,7 +14,7 @@ const timeSlots = [
   { id: '09:00', start: '09:00', end: '10:00', label: 'morning' },
   { id: '10:00', start: '10:00', end: '11:00', label: 'morning' },
   { id: '11:00', start: '11:00', end: '12:00', label: 'morning' },
- 
+
   { id: '13:00', start: '13:00', end: '14:00', label: 'afternoon' },
   { id: '14:00', start: '14:00', end: '15:00', label: 'afternoon' },
   { id: '15:00', start: '15:00', end: '16:00', label: 'afternoon' },
@@ -28,12 +28,12 @@ const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
  * Prevents Dr. Smith from being booked in Section A and Section B at the same time.
  */
 const getBusySlots = async () => {
- 
+
   const existingSchedules = await Timetable.find({ status: { $in: ['active', 'published'] } });
 
   const busy = {
-    faculty: {},  
-    rooms: {}     
+    faculty: {},
+    rooms: {}
   };
 
   existingSchedules.forEach(schedule => {
@@ -86,15 +86,15 @@ const sortSlotsByDayAndTime = (slots) => {
 const generateTimetable = async (batch) => {
   console.log(`🚀 Generating Timetable (Heuristic) for: ${batch.name}`);
 
- 
+
   const busySlots = await getBusySlots();
   const allClassrooms = await Classroom.find({ isActive: true }).sort({ capacity: 1 });
 
   const lectureRooms = allClassrooms.filter(r => ['lecture', 'seminar'].includes(r.type));
   const labRooms = allClassrooms.filter(r => r.type === 'lab');
 
- 
- 
+
+
   const sortedSubjects = [...batch.subjects].sort((a, b) => {
     const durA = (a.subject.type === 'lab' ? a.subject.hoursPerWeek : 1);
     const durB = (b.subject.type === 'lab' ? b.subject.hoursPerWeek : 1);
@@ -104,28 +104,28 @@ const generateTimetable = async (batch) => {
 
   const resultSlots = [];
 
- 
+
   const batchBusy = {
     faculty: new Set(),
-    rooms: new Set(),  
-    subjectDaily: {}   
+    rooms: new Set(),
+    subjectDaily: {}
   };
 
   const isSlotBusy = (facId, roomId, day, time) => {
     const timeKey = `${day}-${time}`;
 
-   
+
     if (busySlots.faculty[facId]?.includes(timeKey)) return true;
     if (busySlots.rooms[roomId]?.includes(timeKey)) return true;
 
-   
+
     if (batchBusy.faculty.has(`${facId}-${timeKey}`)) return true;
     if (batchBusy.rooms.has(`${roomId}-${timeKey}`)) return true;
 
     return false;
   };
 
- 
+
   for (const subjectEntry of sortedSubjects) {
     const { subject, faculty } = subjectEntry;
     if (!subject || !faculty) continue;
@@ -137,43 +137,47 @@ const generateTimetable = async (batch) => {
     const facId = faculty._id.toString();
     const isLab = subject.type === 'lab';
 
-   
-   
-    const MAX_LAB_BLOCK_SIZE = 2;
-    const blockDuration = isLab ? Math.min(hoursNeeded, MAX_LAB_BLOCK_SIZE) : 1;
 
-   
-    const iterations = isLab ? Math.ceil(hoursNeeded / MAX_LAB_BLOCK_SIZE) : hoursNeeded;
+    const MAX_LAB_BLOCK_SIZE = 2;
+    // We will calculate blockDuration inside the loop to handle remaining hours correctly
+    // e.g. if 3 hours needed: 2 hours then 1 hour.
+
+    let hoursRemaining = hoursNeeded;
+
+    // Estimate iterations (safe upper bound)
+    const isMultiHour = isLab; // Assuming multi-hour blocks are only for labs
+    const iterations = isMultiHour ? Math.ceil(hoursNeeded / MAX_LAB_BLOCK_SIZE) : hoursNeeded;
 
     let assignedCount = 0;
 
-    for (let i = 0; i < iterations; i++) {
+    for (let i = 0; i < iterations && hoursRemaining > 0; i++) {
+      const blockDuration = isMultiHour ? Math.min(hoursRemaining, MAX_LAB_BLOCK_SIZE) : 1;
       let placed = false;
 
-     
-     
+
+
       for (const day of days) {
         if (placed) break;
 
-       
+
         const dayCount = batchBusy.subjectDaily[`${subId}-${day}`] || 0;
         if (dayCount >= 1) continue;
 
         for (let t = 0; t < timeSlots.length; t++) {
-         
+
           if (t + blockDuration > timeSlots.length) break;
-         
-         
-         
-         
-         
-         
+
+
+
+
+
+
           if (t <= 2 && (t + blockDuration > 3)) continue;
 
           let facultyFree = true;
           for (let k = 0; k < blockDuration; k++) {
-           
-           
+
+
             if (isSlotBusy(facId, 'dummy', day, timeSlots[t + k].start)) {
               facultyFree = false;
               break;
@@ -194,7 +198,7 @@ const generateTimetable = async (batch) => {
           });
 
           if (bestRoom) {
-           
+
             placed = true;
 
             for (let k = 0; k < blockDuration; k++) {
@@ -212,9 +216,11 @@ const generateTimetable = async (batch) => {
               subject: subject._id,
               faculty: faculty._id,
               classroom: bestRoom._id,
+              classroom: bestRoom._id,
               type: subject.type
             });
 
+            hoursRemaining -= blockDuration;
             console.log(`   ✅ Scheduled: ${subject.name} on ${day} ${timeSlots[t].start}-${timeSlots[t + blockDuration - 1].end} (${blockDuration}h)`);
 
             const dayKey = `${subId}-${day}`;
@@ -227,7 +233,7 @@ const generateTimetable = async (batch) => {
 
       if (!placed) {
         console.warn(`⚠️  Unable to schedule ${subject.name} (${subject.type}) - iteration ${i + 1}/${iterations}. No valid slots/rooms found for ${blockDuration}-hour block.`);
-       
+
         break;
       }
       assignedCount++;
@@ -245,8 +251,8 @@ const generateTimetable = async (batch) => {
 const { generateTimetableGA } = require('./genetic/engine');
 
 const generateMultipleTimetables = async (batch) => {
- 
- 
+
+
 
   console.log('🔄 Switching to Genetic Algorithm for generation...');
   const gaResult = await generateTimetableGA(batch);
