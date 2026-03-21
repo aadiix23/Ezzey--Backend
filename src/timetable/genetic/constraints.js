@@ -55,7 +55,7 @@ function countFacultyOverlaps(chromosome) {
 
     return violations;
 }
-function countRoomOverlaps(chromosome) {
+function countRoomOverlaps(chromosome, occupiedSlots = []) {
     let violations = 0;
     const roomSchedule = {};
 
@@ -65,6 +65,22 @@ function countRoomOverlaps(chromosome) {
 
         const endTime = getEndTime(gene.startTime, gene.duration);
         roomSchedule[key].push({ start: gene.startTime, end: endTime });
+
+        // ----------------------------------------------------------------
+        // NEW: Check against externally occupied slots (processed in controller)
+        // ----------------------------------------------------------------
+        if (Array.isArray(occupiedSlots)) {
+            const isExternallyBusy = occupiedSlots.some(slot =>
+                slot.roomId === gene.roomId &&
+                slot.day === gene.day &&
+                timeRangesOverlap(gene.startTime, endTime, slot.startTime, slot.endTime)
+            );
+
+            if (isExternallyBusy) {
+                // Heavily penalize booking a room that is already taken by another batch
+                violations++;
+            }
+        }
     });
 
     Object.values(roomSchedule).forEach(slots => {
@@ -353,10 +369,10 @@ function countMissingHoursViolations(chromosome, subjects) {
  * Evaluate all hard constraints
  * Returns 1 if all satisfied, 0 otherwise
  */
-function evaluateHardConstraints(chromosome, batch, subjects, rooms) {
+function evaluateHardConstraints(chromosome, batch, subjects, rooms, occupiedSlots = []) {
     const violations =
         countFacultyOverlaps(chromosome) +
-        countRoomOverlaps(chromosome) +
+        countRoomOverlaps(chromosome, occupiedSlots) +
         countStudentOverlaps(chromosome) +
         countCapacityViolations(chromosome, batch, rooms) +
         countRoomTypeMismatches(chromosome, subjects, rooms) +
@@ -389,15 +405,15 @@ function evaluateSoftConstraints(chromosome, subjects) {
  * Calculate overall fitness
  * fitness = hardConstraintScore * 1000 - softConstraintPenalties
  */
-function calculateFitness(chromosome, batch, subjects, rooms) {
-    const hardScore = evaluateHardConstraints(chromosome, batch, subjects, rooms);
+function calculateFitness(chromosome, batch, subjects, rooms, occupiedSlots = []) {
+    const hardScore = evaluateHardConstraints(chromosome, batch, subjects, rooms, occupiedSlots);
 
 
 
     if (hardScore === 0) {
         const violations =
             countFacultyOverlaps(chromosome) +
-            countRoomOverlaps(chromosome) +
+            countRoomOverlaps(chromosome, occupiedSlots) +
             countStudentOverlaps(chromosome) +
             countCapacityViolations(chromosome, batch, rooms) +
             countRoomTypeMismatches(chromosome, subjects, rooms) +
@@ -418,11 +434,11 @@ function calculateFitness(chromosome, batch, subjects, rooms) {
 /**
  * Get detailed constraint report
  */
-function getConstraintReport(chromosome, batch, subjects, rooms) {
+function getConstraintReport(chromosome, batch, subjects, rooms, occupiedSlots = []) {
     return {
         hardConstraints: {
             facultyOverlaps: countFacultyOverlaps(chromosome),
-            roomOverlaps: countRoomOverlaps(chromosome),
+            roomOverlaps: countRoomOverlaps(chromosome, occupiedSlots),
             studentOverlaps: countStudentOverlaps(chromosome),
             capacityViolations: countCapacityViolations(chromosome, batch, rooms),
             roomTypeMismatches: countRoomTypeMismatches(chromosome, subjects, rooms),
@@ -438,7 +454,7 @@ function getConstraintReport(chromosome, batch, subjects, rooms) {
             afternoonLecture: countAfternoonLecture(chromosome, subjects),
             consecutiveDays: countConsecutiveDays(chromosome),
         },
-        fitness: calculateFitness(chromosome, batch, subjects, rooms),
+        fitness: calculateFitness(chromosome, batch, subjects, rooms, occupiedSlots),
     };
 }
 

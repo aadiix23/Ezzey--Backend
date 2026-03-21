@@ -10,6 +10,7 @@ const {
   getVisualTimetable,
   getAllTimetables,
   getTimetableList,
+  getTimetableByClassroom,
 } = require('../controllers/timetableController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -29,6 +30,7 @@ router.get('/list', protect, getTimetableList);
 router.get('/:id', protect, getTimetableById);
 router.get('/batch/:batchId', protect, getTimetableByBatch);
 router.get('/faculty/:facultyId', protect, getTimetableByFaculty);
+router.get('/classroom/:classroomId', protect, getTimetableByClassroom);
 router.delete('/:id', protect, authorize('admin', 'coordinator'), deleteTimetable);
 
 module.exports = router;

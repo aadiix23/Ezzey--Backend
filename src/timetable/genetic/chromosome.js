@@ -14,16 +14,19 @@ class Chromosome {
     /**
      * Evaluate fitness of this chromosome
      */
-    evaluate(batch, subjects, rooms) {
-        this.fitness = calculateFitness(this, batch, subjects, rooms);
+    /**
+     * Evaluate fitness of this chromosome
+     */
+    evaluate(batch, subjects, rooms, occupiedSlots = []) {
+        this.fitness = calculateFitness(this, batch, subjects, rooms, occupiedSlots);
         return this.fitness;
     }
 
     /**
      * Get detailed constraint report
      */
-    getReport(batch, subjects, rooms) {
-        return getConstraintReport(this, batch, subjects, rooms);
+    getReport(batch, subjects, rooms, occupiedSlots = []) {
+        return getConstraintReport(this, batch, subjects, rooms, occupiedSlots);
     }
 
     /**

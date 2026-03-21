@@ -250,12 +250,10 @@ const generateTimetable = async (batch) => {
  */
 const { generateTimetableGA } = require('./genetic/engine');
 
-const generateMultipleTimetables = async (batch) => {
-
-
-
+const generateMultipleTimetables = async (batch, occupiedSlots = []) => {
   console.log('🔄 Switching to Genetic Algorithm for generation...');
-  const gaResult = await generateTimetableGA(batch);
+  // Pass occupiedSlots to the GA engine
+  const gaResult = await generateTimetableGA(batch, { occupiedSlots });
 
   return [
     {

@@ -14,6 +14,20 @@ exports.generateTimetable = async (req, res, next) => {
       });
     }
 
+    // Check if a timetable already exists for this batch
+    const existingTimetable = await Timetable.findOne({
+      batch: batchId,
+      status: { $in: ['active', 'published', 'draft'] }
+    });
+
+    if (existingTimetable) {
+      return res.status(409).json({
+        success: false,
+        message: 'A timetable already exists for this batch. Please delete it first if you wish to generate a new one.',
+        timetableId: existingTimetable._id
+      });
+    }
+
     const batch = await Batch.findById(batchId).populate({
       path: 'subjects',
       populate: [
@@ -59,9 +73,34 @@ exports.generateTimetable = async (req, res, next) => {
       });
     }
 
+    // Fetch existing timetables to identify occupied slots
+    // We only care about active/published/draft timetables for OHER batches
+    // Exclude the current batch to allow providing a new schedule for it
+    const existingTimetables = await Timetable.find({
+      batch: { $ne: batchId },
+      status: { $in: ['active', 'published', 'draft'] }
+    }).select('weekSlots');
+
+    const occupiedSlots = [];
+    existingTimetables.forEach(tt => {
+      if (tt.weekSlots && Array.isArray(tt.weekSlots)) {
+        tt.weekSlots.forEach(slot => {
+          if (slot.classroom && slot.classroom.toString()) {
+            occupiedSlots.push({
+              day: slot.day,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              roomId: slot.classroom.toString()
+            });
+          }
+        });
+      }
+    });
+
     let timetableOptions;
     try {
-      timetableOptions = await generateMultipleTimetables(batch);
+      // Pass occupiedSlots to the generation function
+      timetableOptions = await generateMultipleTimetables(batch, occupiedSlots);
     } catch (error) {
       return res.status(400).json({
         success: false,
@@ -232,8 +271,10 @@ exports.getTimetableByBatch = async (req, res, next) => {
 
 exports.getTimetableByFaculty = async (req, res, next) => {
   try {
+    const facultyId = req.params.facultyId;
+
     const timetables = await Timetable.find({
-      'weekSlots.faculty': req.params.facultyId,
+      'weekSlots.faculty': facultyId,
     })
       .populate([
         { path: 'batch' },
@@ -244,10 +285,80 @@ exports.getTimetableByFaculty = async (req, res, next) => {
       ])
       .sort({ createdAt: -1 });
 
+    const facultySlots = [];
+
+    timetables.forEach((timetable) => {
+      // Filter slots that belong to the requested faculty
+      const relevantSlots = timetable.weekSlots.filter((slot) => {
+        return slot.faculty && slot.faculty._id.toString() === facultyId;
+      });
+
+      // Attach batch info to each slot for context (so they know which class they are teaching)
+      relevantSlots.forEach((slot) => {
+        const slotObj = slot.toObject();
+        slotObj.batch = {
+          _id: timetable.batch._id,
+          name: timetable.batch.name,
+          course: timetable.batch.course,
+          semester: timetable.batch.semester,
+          section: timetable.batch.section
+        };
+        facultySlots.push(slotObj);
+      });
+    });
+
     res.status(200).json({
       success: true,
-      count: timetables.length,
-      data: timetables,
+      count: facultySlots.length,
+      data: facultySlots,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getTimetableByClassroom = async (req, res, next) => {
+  try {
+    const classroomId = req.params.classroomId;
+
+    const timetables = await Timetable.find({
+      'weekSlots.classroom': classroomId,
+    })
+      .populate([
+        { path: 'batch' },
+        { path: 'weekSlots.subject' },
+        { path: 'weekSlots.faculty' },
+        { path: 'weekSlots.classroom' },
+        { path: 'generatedBy' },
+      ])
+      .sort({ createdAt: -1 });
+
+    const roomSlots = [];
+
+    timetables.forEach((timetable) => {
+      // Filter slots that belong to the requested classroom
+      const relevantSlots = timetable.weekSlots.filter((slot) => {
+        return slot.classroom && slot.classroom._id.toString() === classroomId;
+      });
+
+      // Attach batch info to each slot for context (so we know which class is in the room)
+      relevantSlots.forEach((slot) => {
+        const slotObj = slot.toObject();
+        slotObj.batch = {
+          _id: timetable.batch._id,
+          name: timetable.batch.name,
+          course: timetable.batch.course,
+          semester: timetable.batch.semester,
+          section: timetable.batch.section // Assuming section is part of batch structure if needed
+        };
+        roomSlots.push(slotObj);
+      });
+    });
+
+    res.status(200).json({
+      success: true,
+      count: roomSlots.length,
+      data: roomSlots,
     });
   } catch (error) {
     next(error);
